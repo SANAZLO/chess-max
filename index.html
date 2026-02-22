@@ -3,87 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chess MAX Pro</title>
+    <title>Chess AI & PvP</title>
     <style>
-        :root { 
-            --sq-w: #ebecd0; --sq-b: #779556; 
-            --hl: rgba(186, 202, 43, 0.8); --check: rgba(255, 0, 0, 0.6); 
-            --board-size: 94vw;
-        }
-        @media (min-width: 500px) { :root { --board-size: 450px; } }
-
-        body { 
-            margin: 0; background: #222; color: white; 
-            display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; 
-        }
-
-        #status { height: 40px; font-size: 18px; font-weight: bold; color: #fff; text-align: center; margin-bottom: 10px; }
-
-        #board-container { 
-            width: var(--board-size); height: var(--board-size);
-            border: 2px solid #333; box-shadow: 0 8px 25px rgba(0,0,0,0.5);
-        }
-
-        #board { 
-            display: grid; grid-template-columns: repeat(8, 12.5%); grid-template-rows: repeat(8, 12.5%); 
-            width: 100%; height: 100%; 
-        }
-
-        .sq { display: flex; align-items: center; justify-content: center; position: relative; }
+        :root { --sq-w: #f0d9b5; --sq-b: #b58863; --hl: rgba(0, 210, 255, 0.5); --check: rgba(255, 0, 0, 0.6); }
+        body { margin: 0; background: #1a1a1a; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        #status { margin-bottom: 15px; font-size: 18px; color: #00d2ff; text-transform: uppercase; letter-spacing: 1px; }
+        #board-wrapper { width: 95vw; max-width: 400px; aspect-ratio: 1/1; background: #333; padding: 5px; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        #board { display: grid; grid-template-columns: repeat(8, 12.5%); grid-template-rows: repeat(8, 12.5%); width: 100%; height: 100%; }
+        .sq { display: flex; align-items: center; justify-content: center; font-size: clamp(25px, 8vw, 40px); position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
         .w { background: var(--sq-w); } .b { background: var(--sq-b); }
         .selected { background: var(--hl) !important; }
-        .check { background: var(--check) !important; border-radius: 50%; scale: 0.9; }
-
-        /* Стили для SVG фигур */
-        .piece { width: 90%; height: 90%; z-index: 10; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .check { background: var(--check) !important; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .hint::after { content: ''; width: 20%; height: 20%; background: rgba(0,0,0,0.1); border-radius: 50%; position: absolute; }
+        .piece { z-index: 10; user-select: none; transition: transform 0.2s; }
+        .wp { color: #fff; text-shadow: 1px 1px 2px #000; } .bp { color: #000; }
         
-        .overlay { 
-            position: absolute; inset: 0; background: rgba(0,0,0,0.95); 
-            display: flex; flex-direction: column; align-items: center; 
-            justify-content: center; z-index: 100; 
-        }
-
-        button { 
-            padding: 15px 30px; margin: 10px; background: #333; 
-            border: 1px solid #779556; color: #fff; border-radius: 8px; 
-            cursor: pointer; font-size: 16px; width: 240px; font-weight: bold;
-        }
+        /* Меню и Оверлеи */
+        .overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; text-align: center; }
+        button { padding: 15px 30px; margin: 10px; background: #444; border: 1px solid #00d2ff; color: #00d2ff; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; width: 220px; }
+        button:hover { background: #00d2ff; color: #000; }
     </style>
 </head>
 <body>
-    <div id="status">CHESS MAX</div>
-    <div id="board-container"><div id="board"></div></div>
 
-    <div id="start-menu" class="overlay">
-        <h1 style="color:#779556; margin-bottom: 20px;">CHESS MAX PRO</h1>
-        <button onclick="startGame('AI')">🤖 ПРОТИВ ИИ</button>
-        <button onclick="startGame('PVP')">👥 С ДРУГОМ (PVP)</button>
-    </div>
+<div id="status">ВЫБЕРИТЕ РЕЖИМ</div>
 
-    <div id="end-menu" class="overlay" style="display:none">
-        <h1 id="winner-text" style="color: #ff3232;">МАТ!</h1>
-        <button onclick="location.reload()">🔄 ИГРАТЬ СНОВА</button>
-    </div>
+<div id="board-wrapper"><div id="board"></div></div>
+
+<div id="start-menu" class="overlay">
+    <h1 style="color:#00d2ff">CHESS MOBILE</h1>
+    <button onclick="startGame('AI')">ИГРАТЬ С ИИ</button>
+    <button onclick="startGame('PVP')">ДРУГ (ОДИН ТЕЛЕФОН)</button>
+</div>
+
+<div id="end-menu" class="overlay" style="display:none">
+    <h1 id="winner-text">МАТ!</h1>
+    <button onclick="location.reload()">ИГРАТЬ СНОВА</button>
+</div>
 
 <script>
-// Векторная графика фигур (SVG)
-const PIECES_SVG = {
-    P: '<svg viewBox="0 0 45 45"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#fff" stroke="#000" stroke-width="1.5""")/>></svg>',
-    R: '<svg viewBox="0 0 45 45"><path d="M9 39h27v-3H9v3zM12 36h21v-4H12v4zM11 14V9h4v2h5V9h5v2h5V9h4v5" fill="#fff" stroke="#000" stroke-width="1.5""")/>><path d="M34 14l-3 3H14l-3-3" fill="#fff" stroke="#000" stroke-width="1.5""")/>><path d="M31 17v12.5H14V17" fill="#fff" stroke="#000" stroke-width="1.5""")/>><path d="M31 29.5l1.5 2.5h-20l1.5-2.5" fill="#fff" stroke="#000" stroke-width="1.5""")/>><path d="M11 14h23" fill="none" stroke="#000" stroke-width="1.5""")/>></svg>',
-    N: '<svg viewBox="0 0 45 45"><path d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21" fill="#fff" stroke="#000" stroke-width="1.5""")/>><path d="M24 18c.3 1.2 2 1.5 2 1.5s1-2.5-1-3c-1.5-.5-1 1.5-1 1.5z" fill="#000""")/>></svg>',
-    B: '<svg viewBox="0 0 45 45"><g fill="#fff" stroke="#000" stroke-width="1.5"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 0 2 .5 3s-3 3-3 3H11s-3.5-2-3-3 .5-3 .5-3z""")/>><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z""")/>><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z""")/>></g></svg>',
-    Q: '<svg viewBox="0 0 45 45"><g fill="#fff" stroke="#000" stroke-width="1.5"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM24.5 7.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM11 20a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM38 20a2 2 0 1 1-4 0 2 2 0 1 1 4 0z""")/>><path d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-13.5V25l-7-11 2 12z""")/>><path d="M9 26c0 2 1.5 2 2.5 4 2.5 4 4.5 6 12.5 6s10-2 12.5-6c1-2 2.5-2 2.5-4 0-1.5-12-1.5-21-1.5s-16.5 0-16.5 1.5z""")/>><path d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0""")/>></g></svg>',
-    K: '<svg viewBox="0 0 45 45"><g fill="#fff" stroke="#000" stroke-width="1.5"><path d="M22.5 11.63V6M20 8h5""")/>><path d="M22.5 25s4.5-7.5 3-10c-1.5-2.5-6-2.5-6 0-1.5 2.5 3 10 3 10z""")/>><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-1-1-1-4-1s-3.5 3.5-3.5 3.5-.5-1.5-4-1.5-4 1.5-4 1.5-.5-1.5-4-1.5-4 1.5-4 1.5s.5-2 3.5-2c-3 0-1 0-4 1s-10 4.5-6 10.5v7z""")/>><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0""")/>></g></svg>',
-    
-    // Черные фигуры (те же формы, но цвета инвертированы)
-    p: '<svg viewBox="0 0 45 45"><path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" fill="#333" stroke="#fff" stroke-width="1.5""")/>></svg>',
-    r: '<svg viewBox="0 0 45 45"><path d="M9 39h27v-3H9v3zM12 36h21v-4H12v4zM11 14V9h4v2h5V9h5v2h5V9h4v5" fill="#333" stroke="#fff" stroke-width="1.5""")/>><path d="M34 14l-3 3H14l-3-3" fill="#333" stroke="#fff" stroke-width="1.5""")/>><path d="M31 17v12.5H14V17" fill="#333" stroke="#fff" stroke-width="1.5""")/>><path d="M31 29.5l1.5 2.5h-20l1.5-2.5" fill="#333" stroke="#fff" stroke-width="1.5""")/>><path d="M11 14h23" fill="none" stroke="#fff" stroke-width="1.5""")/>></svg>',
-    n: '<svg viewBox="0 0 45 45"><path d="M22 10c10.5 1 16.5 8 16 29H15c0-9 10-6.5 8-21" fill="#333" stroke="#fff" stroke-width="1.5""")/>><path d="M24 18c.3 1.2 2 1.5 2 1.5s1-2.5-1-3c-1.5-.5-1 1.5-1 1.5z" fill="#fff""")/>></svg>',
-    b: '<svg viewBox="0 0 45 45"><g fill="#333" stroke="#fff" stroke-width="1.5"><path d="M9 36c3.39-.97 10.11.43 13.5-2 3.39 2.43 10.11 1.03 13.5 2 0 0 0 2 .5 3s-3 3-3 3H11s-3.5-2-3-3 .5-3 .5-3z""")/>><path d="M15 32c2.5 2.5 12.5 2.5 15 0 .5-1.5 0-2 0-2 0-2.5-2.5-4-2.5-4 5.5-1.5 6-11.5-5-15.5-11 4-10.5 14-5 15.5 0 0-2.5 1.5-2.5 4 0 0-.5.5 0 2z""")/>><path d="M25 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 1 1 5 0z""")/>></g></svg>',
-    q: '<svg viewBox="0 0 45 45"><g fill="#333" stroke="#fff" stroke-width="1.5"><path d="M8 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM24.5 7.5a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM41 12a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM11 20a2 2 0 1 1-4 0 2 2 0 1 1 4 0zM38 20a2 2 0 1 1-4 0 2 2 0 1 1 4 0z""")/>><path d="M9 26c8.5-1.5 21-1.5 27 0l2-12-7 11V11l-5.5 13.5-3-15-3 15-5.5-13.5V25l-7-11 2 12z""")/>><path d="M9 26c0 2 1.5 2 2.5 4 2.5 4 4.5 6 12.5 6s10-2 12.5-6c1-2 2.5-2 2.5-4 0-1.5-12-1.5-21-1.5s-16.5 0-16.5 1.5z""")/>><path d="M11.5 30c3.5-1 18.5-1 22 0M12 33.5c6-1 15-1 21 0""")/>></g></svg>',
-    k: '<svg viewBox="0 0 45 45"><g fill="#333" stroke="#fff" stroke-width="1.5"><path d="M22.5 11.63V6M20 8h5""")/>><path d="M22.5 25s4.5-7.5 3-10c-1.5-2.5-6-2.5-6 0-1.5 2.5 3 10 3 10z""")/>><path d="M11.5 37c5.5 3.5 15.5 3.5 21 0v-7s9-4.5 6-10.5c-4-1-1-1-4-1s-3.5 3.5-3.5 3.5-.5-1.5-4-1.5-4 1.5-4 1.5-.5-1.5-4-1.5-4 1.5-4 1.5s.5-2 3.5-2c-3 0-1 0-4 1s-10 4.5-6 10.5v7z""")/>><path d="M11.5 30c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0m-21 3.5c5.5-3 15.5-3 21 0""")/>></g></svg>'
-};
+const boardEl = document.getElementById('board');
+const statusEl = document.getElementById('status');
+const icons = {'r':'♜','n':'♞','b':'♝','q':'♛','k':'♚','p':'♟','R':'♜','N':'♞','B':'♝','Q':'♛','K':'♚','P':'♟'};
 
 let board = [
     ['r','n','b','q','k','b','n','r'], ['p','p','p','p','p','p','p','p'],
@@ -91,19 +53,20 @@ let board = [
     ['.','.','.','.','.','.','.','.'], ['.','.','.','.','.','.','.','.'],
     ['P','P','P','P','P','P','P','P'], ['R','N','B','Q','K','B','N','R']
 ];
-let selected = null, turn = 'W', gameMode = null, isOver = false;
+
+let turn = 'W', selected = null, hints = [], gameMode = null, isOver = false;
 
 function startGame(mode) {
     gameMode = mode;
     document.getElementById('start-menu').style.display = 'none';
-    statusEl.innerText = "ХОД БЕЛЫХ";
+    statusEl.innerText = "ВАШ ХОД (БЕЛЫЕ)";
     draw();
 }
 
-// ЛОГИКА ШАХМАТ
 function getPieceLogic(r1, c1, r2, c2, b) {
     const p = b[r1][c1], target = b[r2][c2], dr = Math.abs(r2-r1), dc = Math.abs(c2-c1), pT = p.toUpperCase();
     if (target !== '.' && (p === p.toUpperCase()) === (target === target.toUpperCase())) return false;
+    
     if (pT === 'P') {
         const dir = p === 'P' ? -1 : 1;
         if (c1 === c2 && target === '.') {
@@ -164,22 +127,35 @@ function clickSq(r, c) {
     const p = board[r][c];
     if (selected) {
         if (canMoveSafe(selected.r, selected.c, r, c, board)) {
-            board[r][c] = board[selected.r][selected.c]; board[selected.r][selected.c] = '.';
-            if (r === 0 && board[r][c] === 'P') board[r][c] = 'Q';
-            if (r === 7 && board[r][c] === 'p') board[r][c] = 'q';
-            turn = turn === 'W' ? 'B' : 'W';
-            selected = null; 
-            if (checkGameOver()) finishGame();
-            else if (gameMode === 'AI') {
-                statusEl.innerText = "ИИ ДУМАЕТ...";
-                setTimeout(aiMove, 600);
-            }
+            makeMove(selected.r, selected.c, r, c);
+            if (isOver) return;
+            if (gameMode === 'AI') setTimeout(aiMove, 600);
         } else {
             selected = (p !== '.' && (turn === 'W' ? p === p.toUpperCase() : p === p.toLowerCase())) ? {r, c} : null;
         }
     } else if (p !== '.' && (turn === 'W' ? p === p.toUpperCase() : p === p.toLowerCase())) {
         selected = {r, c};
     }
+    updateHints();
+    draw();
+}
+
+function makeMove(r1, c1, r2, c2) {
+    board[r2][c2] = board[r1][c1]; board[r1][c1] = '.';
+    if (r2 === 0 && board[r2][c2] === 'P') board[r2][c2] = 'Q';
+    if (r2 === 7 && board[r2][c2] === 'p') board[r2][c2] = 'q';
+    
+    turn = turn === 'W' ? 'B' : 'W';
+    selected = null; hints = [];
+    
+    if (checkGameOver()) {
+        isOver = true;
+        const king = getKingPos(turn, board);
+        const check = isAttacked(king.r, king.c, turn === 'W' ? 'B' : 'W', board);
+        document.getElementById('winner-text').innerText = check ? (turn === 'W' ? "ПОБЕДА ЧЕРНЫХ!" : "ПОБЕДА БЕЛЫХ!") : "НИЧЬЯ (ПАТ)";
+        document.getElementById('end-menu').style.display = 'flex';
+    }
+    statusEl.innerText = turn === 'W' ? "ХОД БЕЛЫХ" : "ХОД ЧЕРНЫХ";
     draw();
 }
 
@@ -192,47 +168,45 @@ function aiMove() {
                 for (let r2=0; r2<8; r2++)
                     for (let c2=0; c2<8; c2++)
                         if (canMoveSafe(r1, c1, r2, c2, board)) {
-                            let w = board[r2][c2] === '.' ? 0 : vals[board[r2][c2].toLowerCase()];
-                            moves.push({r1, c1, r2, c2, w});
+                            let weight = board[r2][c2] === '.' ? 0 : vals[board[r2][c2].toLowerCase()];
+                            moves.push({r1, c1, r2, c2, weight});
                         }
     if (moves.length > 0) {
-        moves.sort((a,b) => b.w - a.w);
-        const topSet = moves.filter(x => x.w === moves.w);
-        const m = topSet[Math.floor(Math.random() * topSet.length)];
-        board[m.r2][m.c2] = board[m.r1][m.c1]; board[m.r1][m.c1] = '.';
-        if (board[m.r2][m.c2] === 'p' && m.r2 === 7) board[m.r2][m.c2] = 'q';
-        turn = 'W'; if (checkGameOver()) finishGame();
+        moves.sort((a,b) => b.weight - a.weight);
+        const best = moves.filter(m => m.weight === moves[0].weight);
+        const m = best[Math.floor(Math.random() * best.length)];
+        makeMove(m.r1, m.c1, m.r2, m.c2);
     }
-    statusEl.innerText = "ВАШ ХОД";
-    draw();
 }
 
-function finishGame() {
-    isOver = true;
-    const king = getKingPos(turn, board);
-    const check = isAttacked(king.r, king.c, turn === 'W' ? 'B' : 'W', board);
-    document.getElementById('winner-text').innerText = check ? (turn === 'W' ? "ПОБЕДА ЧЕРНЫХ!" : "ПОБЕДА БЕЛЫХ!") : "НИЧЬЯ";
-    document.getElementById('end-menu').style.display = 'flex';
+function updateHints() {
+    hints = [];
+    if (selected) {
+        for (let i = 0; i < 8; i++)
+            for (let j = 0; j < 8; j++)
+                if (canMoveSafe(selected.r, selected.c, i, j, board)) hints.push({r: i, c: j});
+    }
 }
 
 function draw() {
     boardEl.innerHTML = '';
     const kingW = getKingPos('W', board), kingB = getKingPos('B', board);
-    const chW = isAttacked(kingW.r, kingW.c, 'B', board), chB = isAttacked(kingB.r, kingB.c, 'W', board);
+    const checkW = isAttacked(kingW.r, kingW.c, 'B', board);
+    const checkB = isAttacked(kingB.r, kingB.c, 'W', board);
 
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const sq = document.createElement('div');
             sq.className = `sq ${(r+c)%2===0?'w':'b'}`;
             if (selected && selected.r === r && selected.c === c) sq.classList.add('selected');
-            if ((board[r][c] === 'K' && chW) || (board[r][c] === 'k' && chB)) sq.classList.add('check');
+            if (hints.some(h => h.r === r && h.c === c)) sq.classList.add('hint');
+            if ((board[r][c] === 'K' && checkW) || (board[r][c] === 'k' && checkB)) sq.classList.add('check');
             
-            const p = board[r][c];
-            if (p !== '.') {
-                const pDiv = document.createElement('div');
-                pDiv.className = 'piece';
-                pDiv.innerHTML = PIECES_SVG[p];
-                sq.appendChild(pDiv);
+            if (board[r][c] !== '.') {
+                const div = document.createElement('div');
+                div.className = `piece ${board[r][c] === board[r][c].toUpperCase() ? 'wp' : 'bp'}`;
+                div.innerText = icons[board[r][c]];
+                sq.appendChild(div);
             }
             sq.onclick = () => clickSq(r, c);
             boardEl.appendChild(sq);
